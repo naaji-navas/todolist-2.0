@@ -98,23 +98,51 @@ app.get("/:customListName", (req, res) => {
 
 app.post("/", function (req, res) {
   const itemName = req.body.newItem;
-
+  const listName = req.body.list;
+  console.log("listName", listName);
   const item = new Item({
     name: itemName,
   });
-  item.save();
-  res.redirect("/");
+  if (listName === "Today") {
+    item.save();
+    res.redirect("/");
+  } else {
+    List.findOne({ name: listName }, (err, foundList) => {
+      foundList.items.push(item);
+      foundList.save();
+      res.redirect("/" + listName);
+    });
+  }
 });
 
 app.post("/delete", (req, res) => {
   const checkedId = req.body.checkbox;
-  Item.findByIdAndRemove(checkedId, (err) => {
-    if (err) console.log(err);
-    else {
-      console.log("Successfully deleted checked item.");
-      res.redirect("/");
-    }
-  });
+  const listName = req.body.listName;
+  if (listName === "Today") {
+    Item.findByIdAndRemove(checkedId, (err) => {
+      if (err) console.log(err);
+      else {
+        console.log("Successfully deleted checked item.");
+        res.redirect("/");
+      }
+    });
+  } else {
+    List.findOneAndUpdate(
+      { name: listName },
+      {
+        $pull: {
+          items: {
+            _id: checkedId,
+          },
+        },
+      },
+      (err, foundList) => {
+        if (!err) {
+          res.redirect("/" + listName);
+        }
+      }
+    );
+  }
 });
 
 app.get("/work", function (req, res) {
